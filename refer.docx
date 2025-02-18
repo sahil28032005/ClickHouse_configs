@@ -1,0 +1,69 @@
+logs table:
+
+CREATE TABLE deployment_raw_logs
+(
+    event_id UUID DEFAULT generateUUIDv4(),
+    deployment_id String,
+    project_id String,
+    log_message String,
+    log_level String DEFAULT 'info',
+    file_name String,
+    file_size_bytes UInt64,
+    git_url String,
+    timestamp DateTime,
+    kafka_offset UInt64,
+    kafka_partition UInt32
+)
+ENGINE = MergeTree()
+ORDER BY (deployment_id, timestamp)
+PARTITION BY toYYYYMM(timestamp);
+
+ai table:
+CREATE TABLE deployment_ai_analysis
+(
+    analysis_id UUID DEFAULT generateUUIDv4(),   -- Unique analysis ID
+    deployment_id String,                         -- Deployment ID (foreign reference)
+    log_event_id UUID,                            -- UUID reference for the log event (matching log entry)
+    classification Enum8(                        -- AI analysis classification
+        'SUCCESS' = 0,
+        'WARNING' = 1,
+        'RECOVERABLE_ERROR' = 2,
+        'CRITICAL_FAILURE' = 3,
+        'UNKNOWN' = 4,
+        'ERROR' = 5
+    ),
+    reasoning String,                             -- Reasoning behind the classification
+    analyzed_at DateTime DEFAULT now()           -- Timestamp when the analysis was done
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(analyzed_at)             -- Partition by month for efficient queries
+ORDER BY (deployment_id, analyzed_at);         -- Order by deployment and analysis timestamp
+
+
+const { createClient } = require('@clickhouse/client'); // Import ClickHouse client
+
+const clickHouseClient = createClient({
+    host: process.env.CH_HOST,
+    database: process.env.CH_DB,
+    protocol: 'http',
+    compression: true,
+    timeout: 10000, // Timeout in milliseconds
+    username: process.env.CH_USERNAME,
+    // password: process.env.CH_PASSWORD  //as we havne set yet
+});
+
+async function testConnection() {
+    try {
+        // Run a simple query to test connection
+        await clickHouseClient.ping(); // Use ping() for a quick connection check
+        console.log('Successfully pinged ClickHouse server.');
+    }
+    catch (e) {
+        console.error('Failed to connect to ClickHouse:', e.message);
+    }
+}
+
+//testing
+testConnection();
+
+module.exports = clickHouseClient;
