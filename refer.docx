@@ -67,3 +67,35 @@ async function testConnection() {
 testConnection();
 
 module.exports = clickHouseClient;
+
+
+
+//updated schemas
+CREATE TABLE deployment_logs (
+    event_id UUID DEFAULT generateUUIDv4(),
+    project_id String DEFAULT '',
+    deployment_id String DEFAULT '',
+    log_message String DEFAULT '',
+    log_level String DEFAULT 'info',
+    file_name Nullable(String),
+    file_size Nullable(String),
+    file_size_in_bytes Nullable(Int64),
+    time_taken Nullable(Float64),
+    git_url Nullable(String),
+    kafka_offset Nullable(Int64),
+    kafka_partition Nullable(Int32),
+    timestamp DateTime DEFAULT now()
+) ENGINE = MergeTree()
+ORDER BY (deployment_id, timestamp)
+PARTITION BY toYYYYMMDD(timestamp);
+
+CREATE TABLE deployment_ai_analysis (
+    log_event_id UUID DEFAULT generateUUIDv4(),
+    deployment_id String DEFAULT '',
+    classification String DEFAULT '',
+    reasoning String DEFAULT '',
+    timestamp DateTime DEFAULT now()
+) ENGINE = MergeTree()
+ORDER BY (deployment_id, timestamp)
+PARTITION BY toYYYYMMDD(timestamp);
+
